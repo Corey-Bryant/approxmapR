@@ -178,3 +178,61 @@ inter_sequence_distance.W_Sequence <-
 inter_sequence_distance.Sequence_List <- function(sequence_list) {
     inter_sequence_distance_cpp(sequence_list)
 }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+consensus_sequence_distance <- function(sequence_list, consensus_sequence_list) {
+
+  total_id_sequences = sum(sequence_list$n)
+
+  list_cluster <- numeric(total_id_sequences)
+  list_id <- character(total_id_sequences)
+  list_consensusid <- character(total_id_sequences)
+  list_distance <- character(total_id_sequences)
+
+  count <- 0
+  for (c in sequence_list$cluster) {
+
+    current_cluster_ids <- subset(sequence_list, cluster == c)$df_sequences[[1]]
+
+    for (i in current_cluster_ids$id) {
+
+      current_cluster_ids_sequence <- current_cluster_ids %>% filter(id == i) %>% pull(sequence)
+
+      for (j in consensus_sequence_list$id) {
+        count <- count + 1
+        current_consensus_sequence <- dfa_consensus_clustered %>% filter(id == j) %>% pull(sequence)
+
+        current_sequences <- rbind(current_consensus_sequence,
+                                   current_cluster_ids_sequence)
+        class(current_sequences) <- "Sequence_List"
+
+        print(paste0("Calculating distance for id = ", i, " & consensus pattern id = ", j))
+        current_id_consensus_distance <- inter_sequence_distance(current_sequences)
+
+        list_cluster[count] <- c
+        list_id[count] <- i
+        list_consensusid[count] <- j
+        list_distance[count] <- current_id_consensus_distance[1,2]
+
+      }
+    }
+  }
+
+
+  tibble("cluster" = list_cluster,
+         "id" = list_id,
+         "consensusid" = list_consensusid,
+         "distance" = list_distance)
+}
