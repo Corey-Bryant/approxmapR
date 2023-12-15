@@ -370,32 +370,31 @@ convert_to_sequence <- function(df_seq) {
     # since the items have to be aggregated into itemsets and itemsets, into sequences,
     # this method has 2
     # mutate calls to do that all while ensuring the classes are appropriately maintained
-    df_seq <-
-        df_seq %>% group_by(id) %>% nest(.key = "nested_id") %>% mutate(
-            sequence = map(nested_id,
-                           function(df_id) {
-                               seqs <-
-                                   df_id %>% group_by(period) %>%
-                                   nest(.key = "list_data") %>%
-                                   mutate(seqs = map(list_data,
-                                                     function(itemset) {
-                                                         events <- itemset$event
-                                                         class(events) <-
-                                                             c("Sequence_Itemset",
-                                                               class(events))
-                                                         events
-                                                     })) %>% pull(seqs)
-                               class(seqs) <-
-                                   c("Sequence", class(seqs))
-                               seqs
-                           }),
-            sequence_formatted = map_chr(sequence, format_sequence)
-        ) %>% select(id, sequence, sequence_formatted)
-    names(df_seq$sequence) <- df_seq$id
-    class(df_seq$sequence) <-
-        c("Sequence_List", class(df_seq$sequence))
+    df_seq <- df_seq %>% group_by(id) %>% nest(nested_id = c(date, period, event)) %>%
+                mutate(sequence = map(nested_id,
+                                      function(df_id) {
+                                        seqs <- df_id %>% group_by(period) %>% nest(list_data = c(date, event)) %>%
+                                                  mutate(seqs = map(list_data,
+                                                                    function(itemset) {
+                                                                      events <- itemset$event
+                                                                      attr(events, "period") <- c(period)
+                                                                      attr(events, "events") <- c(itemset$event)
+                                                                      class(events) <- c("Sequence_Itemset", class(events))
+                                                                      events
+                                                                    }
+                                                      )
+                                                  ) %>% pull(seqs)
+                                        class(seqs) <- c("Sequence", class(seqs))
+                                        seqs
+                                      }
+                                    ),
+                       sequence_formatted = map_chr(sequence, format_sequence)
+                )
+  names(df_seq$sequence) <- df_seq$id
+  class(df_seq$sequence) <- c("Sequence_List", class(df_seq$sequence))
 
-    df_seq
+  return(df_seq)
+
 }
 
 #' Print methods
