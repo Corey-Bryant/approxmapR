@@ -5,6 +5,11 @@
 
 using namespace Rcpp;
 
+#ifdef RCPP_USE_GLOBAL_ROSTREAM
+Rcpp::Rostream<true>&  Rcpp::Rcout = Rcpp::Rcpp_cout_get();
+Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
+#endif
+
 // calculate_sorenson_distance_cpp
 float calculate_sorenson_distance_cpp(StringVector itemset_1, StringVector itemset_2);
 RcppExport SEXP _approxmapR_calculate_sorenson_distance_cpp(SEXP itemset_1SEXP, SEXP itemset_2SEXP) {
