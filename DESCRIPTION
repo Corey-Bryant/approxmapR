@@ -1,13 +1,14 @@
 Package: approxmapR
 Type: Package
 Title: ApproxMAP (APPROXimate Multiple Alignment Pattern)
-Version: 1.7.0
+Version: 1.7.1
 Author: Corey Bryant, Gurudev Ilngovan, and Hye Chung Kum.
 Maintainer: The package maintainer <yourself@somewhere.net>
-Description: ApproxMAP (APPROXimate Multiple Alignment Pattern). Is an efficient and effective mining algorithm which finds maximal approximate sequential patterns.
+Description: ApproxMAP (APPROXimate Multiple Alignment Pattern); is an efficient and effective mining algorithm which finds maximal approximate sequential patterns.
 License: What license is it under?
 Encoding: UTF-8
 LazyData: true
+Depends: R (>= 4.3), htmltools (>= 0.5.7)
 LinkingTo: Rcpp,
     RcppProgress
 Imports: Rcpp,
