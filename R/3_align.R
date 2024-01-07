@@ -7,24 +7,25 @@ get_weighted_sequence <- function(x, ...) {
 get_weighted_sequence.Sequence <- function(sequence_1, sequence_2) {
   w_sequence <-
     map2(sequence_1, sequence_2,
-         function(sequence_itemset_1,
-                  sequence_itemset_2) {
+         function(sequence_itemset_1, sequence_itemset_2) {
            w_sequence_itemset = list()
+
            elements <- c(sequence_itemset_1, sequence_itemset_2)
            elements <- elements[elements != "_"]
-           freq_tbl <-
-             elements %>%
-             table()
+           freq_tbl <- elements %>% table()
+
            w_sequence_itemset$elements <- names(freq_tbl)
            w_sequence_itemset$element_weights <- unname(freq_tbl)
-           if (("_" %in% sequence_itemset_1) |
-               ("_" %in% sequence_itemset_2)) {
+           w_sequence_itemset$period <- attr(sequence_1[1][[1]], "period")
+
+           if (("_" %in% sequence_itemset_1) | ("_" %in% sequence_itemset_2)) {
              w_sequence_itemset$itemset_weight <- 1
            } else {
              w_sequence_itemset$itemset_weight <- 2
            }
            class_it(w_sequence_itemset, "W_Sequence_Itemset")
-         })
+         }
+    )
   attr(w_sequence, "n") <- 2
   class_it(w_sequence, "W_Sequence")
 }
@@ -73,23 +74,18 @@ get_weighted_sequence.Sequence_List <- function(sequence_list,
   if (length(sequence_list) == 1) {
     # browser()
     sequence <- sequence_list[[1]]
-    w_sequence <- align_sequences(sequence,
-                                  sequence,
-                                  fun)
+    w_sequence <- align_sequences(sequence, sequence, fun)
 
     for (i in 1:length(sequence)) {
       w_sequence[[i]]$itemset_weight <- 1
-      w_sequence[[i]]$element_weights <-
-        (w_sequence[[i]]$element_weights) / 2
+      w_sequence[[i]]$element_weights <- (w_sequence[[i]]$element_weights) / 2
     }
     attr(w_sequence, "n") <- 1
-    alignments <-
-      attr(w_sequence, "alignments")[1]
+    alignments <- attr(w_sequence, "alignments")[1]
 
   } else {
     # browser()
-    w_sequence <-
-      align_sequences(sequence_list[[1]], sequence_list[[2]], fun)
+    w_sequence <- align_sequences(sequence_list[[1]], sequence_list[[2]], fun)
 
     if (length(sequence_list) > 2) {
       for (i in 3:length(sequence_list)) {
@@ -287,8 +283,7 @@ insert_blank_w_itemset <- function(w_sequence) {
 align_sequences.W_Sequence <- function(w_sequence,
                                        sequence,
                                        fun = sorenson_distance) {
-  distance_matrix <-
-    inter_sequence_distance(w_sequence, sequence, fun)$distance_matrix
+  distance_matrix <- inter_sequence_distance(w_sequence, sequence, fun)$distance_matrix
   n <- attr(w_sequence, "n")
   pre_alignments <- attr(w_sequence, "alignments")
 
