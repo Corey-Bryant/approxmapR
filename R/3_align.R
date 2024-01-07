@@ -5,6 +5,9 @@ get_weighted_sequence <- function(x, ...) {
 
 #' @export
 get_weighted_sequence.Sequence <- function(sequence_1, sequence_2) {
+
+  period <- attr(sequence_1[1][[1]], "period")
+
   w_sequence <-
     map2(sequence_1, sequence_2,
          function(sequence_itemset_1, sequence_itemset_2) {
@@ -16,7 +19,7 @@ get_weighted_sequence.Sequence <- function(sequence_1, sequence_2) {
 
            w_sequence_itemset$elements <- names(freq_tbl)
            w_sequence_itemset$element_weights <- unname(freq_tbl)
-           w_sequence_itemset$period <- attr(sequence_1[1][[1]], "period")
+           w_sequence_itemset$period <- period
 
            if (("_" %in% sequence_itemset_1) | ("_" %in% sequence_itemset_2)) {
              w_sequence_itemset$itemset_weight <- 1
@@ -26,14 +29,20 @@ get_weighted_sequence.Sequence <- function(sequence_1, sequence_2) {
            class_it(w_sequence_itemset, "W_Sequence_Itemset")
          }
     )
+
   attr(w_sequence, "n") <- 2
+
   class_it(w_sequence, "W_Sequence")
+
 }
 
 #' @export
 get_weighted_sequence.W_Sequence <- function(w_sequence, sequence) {
+
   n <- attr(w_sequence, "n")
   x <- F
+  period <- attr(w_sequence, "period")
+
   w_sequence_new <-
     map2(w_sequence, sequence,
          function(w_sequence_itemset, sequence_itemset) {
@@ -43,29 +52,36 @@ get_weighted_sequence.W_Sequence <- function(w_sequence, sequence) {
 
            } else if ("_" %in% w_sequence_itemset$elements) {
              x <- T
+
              freq_tb <- table(sequence_itemset)
              w_sequence_itemset$elements <- names(freq_tb)
              w_sequence_itemset$element_weights <- unname(freq_tb)
              w_sequence_itemset$itemset_weight <- 1
+             w_sequence_itemset$period <- period
+
              class_it(w_sequence_itemset, "W_Sequence_Itemset")
+
            } else {
-             freq_tb <-
-               rep(w_sequence_itemset$elements,
-                   w_sequence_itemset$element_weights) %>%
-               c(sequence_itemset) %>%
-               table()
+             freq_tb <- rep(w_sequence_itemset$elements,
+                            w_sequence_itemset$element_weights) %>%
+                        c(sequence_itemset) %>%
+                        table()
 
              w_sequence_itemset$elements <- names(freq_tb)
              w_sequence_itemset$element_weights <- unname(freq_tb)
-             w_sequence_itemset$itemset_weight <-
-               w_sequence_itemset$itemset_weight + 1
+             w_sequence_itemset$itemset_weight <- w_sequence_itemset$itemset_weight + 1
+             w_sequence_itemset$period <- period
+
              class_it(w_sequence_itemset, "W_Sequence_Itemset")
+
            }
          })
 
-
   attr(w_sequence_new, "n") <- n + 1
+  attr(w_sequence_new, "period") <- period
+
   class_it(w_sequence_new, "W_Sequence")
+
 }
 
 #' @export
@@ -95,13 +111,16 @@ get_weighted_sequence.Sequence_List <- function(sequence_list,
 
     # browser()
     alignments <- attr(w_sequence, "alignments")
+
   }
 
   alignments <- class_it(alignments, "Sequence_List")
   names(alignments) <- names(sequence_list)
+
   attr(w_sequence, "alignments") <- alignments
 
   w_sequence
+
 }
 
 #' @export
@@ -153,8 +172,7 @@ align_sequences <- function(x, ...) {
 #' @export
 align_sequences.Sequence <-
   function(sequence_1, sequence_2, fun = sorenson_distance) {
-    distance_matrix <-
-      inter_sequence_distance(sequence_1, sequence_2, fun)$distance_matrix
+    distance_matrix <- inter_sequence_distance(sequence_1, sequence_2, fun)$distance_matrix
     aligned_sequence_1 <- structure(list(), class = "Sequence")
     aligned_sequence_2 <- structure(list(), class = "Sequence")
 
