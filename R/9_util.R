@@ -272,6 +272,7 @@ consensus_sequence_distance <- function(df_aggregated, consensus_sequence_list) 
   # For each individual sequence, calculate the distance from each consensus pattern
   #   and assign
   df_cluster <- df_aggregated %>% convert_to_sequence() %>% ungroup()
+  consensus_sequence_list <- consensus_sequence_list %>% convert_to_sequence() %>% ungroup()
 
   count <- 0
   for (i in df_cluster$id) {
@@ -310,8 +311,8 @@ consensus_sequence_distance <- function(df_aggregated, consensus_sequence_list) 
                                                                         TRUE ~ "NEED SENSITIVITY ANALYSIS")) %>%
                             arrange(desc(nDup), id, consensusid)
 
-  id_consensus_distance <- id_consensus_distance %>% filter(distance == minDistance)
   id_consensus_distance_dups <- id_consensus_distance %>% filter (nDup > 1)
+  id_consensus_distance <- id_consensus_distance %>% filter(distance == minDistance)  %>% distinct(id, .keep_all = TRUE) %>% select("id", "assignedConsensusCluster", "distance")
 
 
   return(id_consensus_distance)

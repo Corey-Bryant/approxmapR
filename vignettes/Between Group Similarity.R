@@ -14,22 +14,64 @@ library("igraph")
 output_path = "C:\\Users\\Corey\\Documents\\Approxmap\\PROCESS\\Development 2023"
 
 
-data("demo1")
-demo1 <- data.frame(do.call("rbind", strsplit(as.character(demo1$id.date.item), ",")))
-names(demo1) <- c("id", "period", "event")
+
+### Loading Data and Sub-setting Data to Sta3n = 506 ###
+df <- read.csv("C:\\Users\\Corey\\Documents\\Approxmap\\PROCESS\\Data\\Analysis_FY18_level1_CPT_events.csv")
+df <- subset(df, IPflag != 1)
+names(df) <- c("sta3n", "id", "date", "event", "IPflag")
+
+head(df, 30)
 
 
-agg_df <-  demo1 %>% aggregate_sequences(format = "%m/%d/%Y",
-                                         unit = "month",
-                                         n_units = 1,
-                                         summary_stats = FALSE, include_date = TRUE)
+
+# Subsetting data
+dfb <- subset(df, sta3n == 631) %>% select("id", "date", "event")
+dfb <- process_varying_aggregation(dfb, scheme = 1) %>% select(id, date, period, event)
+dfb_agg <- dfb %>% pre_aggregated(include_date = TRUE, summary_stats = TRUE, output_directory = output_path)
+
+dfa <- subset(df, sta3n == 512) %>% select("id", "date", "event")
+dfa <- process_varying_aggregation(dfa, scheme = 1) %>% select(id, date, period, event)
+dfa_agg <- dfa %>% pre_aggregated(include_date = TRUE, summary_stats = TRUE, output_directory = output_path)
 
 
-clustered_kmed <- agg_df %>% cluster_kmedoids(k = 6, use_cache = TRUE)
 
-patterns <- clustered_kmed %>% filter_pattern(threshold = .2)
+# Finding optimal k value for clustering, for each data frame
 
-patterns
+## dataframe a
+dfa_ktable <- dfa_agg %>% find_optimal_k(clustering = 'k-medoids', min_k = 2, max_k = 8,
+                                         save_table = TRUE, use_cache = TRUE,
+                                         file_name = "Dataset A Optimal K.csv" ,
+                                         output_directory = output_path)
+plot_ktable(dfa_ktable)
+
+dfa_opt_k <- dfa_ktable$k[[which.max(dfa_ktable$average_silhouette_width)]]
+dfa_opt_k <- 3
+dfa_siloi <- dfa_ktable$silhouette_object[[2]]
+plot_silhouette(dfa_siloi)
+
+
+dfa_clustered_kmed <- dfa_agg %>% cluster_kmedoids(k = dfa_opt_k, use_cache = TRUE)
+dfa_patterns <- dfa_clustered_kmed %>% filter_pattern(threshold = .2)
+dfa_patterns %>% generate_reports(sil_table = dfa_siloi, output_directory = output_path, end_filename_with = "_sta3n512")
+
+
+## dataframe b
+dfb_ktable <- dfb_agg %>% find_optimal_k(clustering = 'k-medoids', min_k = 2, max_k = 8,
+                                         save_table = TRUE, use_cache = TRUE,
+                                         file_name = "Dataset B Optimal K.csv" ,
+                                         output_directory = output_path)
+plot_ktable(dfb_ktable)
+
+dfb_opt_k <- dfb_ktable$k[[which.max(dfb_ktable$average_silhouette_width)]]
+dfb_opt_k <- 3
+dfb_siloi <- dfb_ktable$silhouette_object[[2]]
+plot_silhouette(dfb_siloi)
+
+
+dfb_clustered_kmed <- dfb_agg %>% cluster_kmedoids(k = dfb_opt_k, use_cache = TRUE)
+dfb_patterns <- dfb_clustered_kmed %>% filter_pattern(threshold = .2)
+dfb_patterns %>% generate_reports(sil_table = dfb_siloi, output_directory = output_path, end_filename_with = "_sta3n631")
+
 
 
 
@@ -37,115 +79,13 @@ patterns
 ##########################################
 ## Consensus Distance Begins Below Here ##
 ##########################################
-convert_consensus_to_events <- function(df_patterns) {
 
-list_cluster <- numeric(1)
-list_period <- numeric(1)
-list_elements <- character(1)
-
-
-ix <- 0
-for (c in df_patterns$cluster) {
-
-    current_concensus <- subset(df_patterns, cluster == c)$consensus_pattern[[1]]
-    current_concensus_length <- length(current_concensus)
-
-    for (i in 1:current_concensus_length) {
-
-      for (e in current_concensus[[i]]$elements) {
-
-        ix <- ix + 1
-
-        list_cluster[ix] <- c
-        list_elements[ix] <- e
-        list_period[ix] <- current_concensus[[i]]$period
-
-      }
-    }
-}
-
-
-  tibble("id" = list_cluster,
-         "date" = list_period,
-         "period" = list_period,
-         "event" = list_elements)
-}
-
-onsensus_sequence_distance <- function(df_aggregated, consensus_sequence_list) {
-
-  total_id_sequences = n_distinct(df_aggregated$id)
-
-  list_cluster <- numeric(total_id_sequences)
-  list_id <- character(total_id_sequences)
-  list_consensusid <- character(total_id_sequences)
-  list_distance <- character(total_id_sequences)
-
-
-  # For each individual sequence, calculate the distance from each consensus pattern
-  #   and assign
-  df_cluster <- df_aggregated %>% convert_to_sequence() %>% ungroup()
-
-  count <- 0
-  for (i in df_cluster$id) {
-
-      current_cluster_ids_sequence <- df_cluster %>% filter(id == i) %>% pull(sequence)
-
-      for (j in consensus_sequence_list$id) {
-        count <- count + 1
-        current_consensus_sequence <- consensus_sequence_list %>% filter(id == j) %>% pull(sequence)
-
-        current_sequences <- c(current_consensus_sequence,
-                                   current_cluster_ids_sequence)
-        class(current_sequences) <- "Sequence_List"
-
-        print(paste0("Calculating distance for id = ", i, " & consensus pattern id = ", j))
-        current_id_consensus_distance <- inter_sequence_distance(current_sequences)
-
-        list_id[count] <- i
-        list_consensusid[count] <- j
-        list_distance[count] <- as.numeric(current_id_consensus_distance[1,2])
-
-      }
-    }
-
-
-  # Creates a Tibble frame which contains:
-  #   the original cluster (if any) the individual sequence came from
-  #
-  id_consensus_distance <- tibble("id" = list_id, "consensusid" = list_consensusid, "distance" = list_distance)
-
-  id_consensus_distance <- id_consensus_distance %>% group_by(id) %>%
-                            mutate(minDistance = min(distance),
-                                   distanceMatch = case_when(distance == minDistance ~ 1, TRUE ~ 0),
-                                   nDup = sum(distanceMatch),
-                                   assignedConsensusCluster = case_when(distanceMatch == 1 & nDup == 1 ~ consensusid,
-                                                                        TRUE ~ "NEED SENSITIVITY ANALYSIS")) %>%
-                            arrange(desc(nDup), id, consensusid)
-
-  id_consensus_distance <- id_consensus_distance %>% filter(distance == minDistance)
-  id_consensus_distance_dups <- id_consensus_distance %>% filter (nDup > 1)
-
-
-  return(id_consensus_distance)
-
-}
-
-
-consensus_events <- patterns %>% convert_consensus_to_events()
-
-
-
-
-
+## NOTE: In the consensus data frames, 'id' = the cluster
 dfa_consensus <- dfa_patterns %>% convert_consensus_to_events()
-dfa_consensus_clustered <- dfa_consensus %>% convert_to_sequence() %>% ungroup()
+dfb_consensus <- dfb_patterns %>% convert_consensus_to_events()
 
-id_consensus_distance <- consensus_sequence_distance(dfb_agg, dfa_consensus_clustered)
-
-
-
-
-
+dfb_id_consensus_distance <- consensus_sequence_distance(dfb_agg, dfa_consensus)
+dfa_id_consensus_distance <- consensus_sequence_distance(dfa_agg, dfb_consensus)
 
 
 
