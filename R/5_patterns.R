@@ -84,7 +84,7 @@ filter_pattern.W_Sequence <- function(w_sequence,
 
       w_sequence_itemset$elements <- w_sequence_itemset$elements[threshold_check]
       w_sequence_itemset$element_weights <- w_sequence_itemset$element_weights[threshold_check]
-      w_sequence_itemset$period <- w_sequence_itemset$element_weights[threshold_check]
+      w_sequence_itemset$period <- w_sequence_itemset$period
 
     }
 
