@@ -114,7 +114,7 @@ get_weighted_sequence.W_Sequence <- function(w_sequence, sequence) {
 get_weighted_sequence.Sequence_List <- function(sequence_list,
                                                 fun = sorenson_distance) {
 
-  #browser()
+  # browser()
 
   if (length(sequence_list) == 1) {
 
