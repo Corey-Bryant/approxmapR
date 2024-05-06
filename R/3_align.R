@@ -5,91 +5,133 @@ get_weighted_sequence <- function(x, ...) {
 
 #' @export
 get_weighted_sequence.Sequence <- function(sequence_1, sequence_2) {
+
   w_sequence <-
     map2(sequence_1, sequence_2,
-         function(sequence_itemset_1,
-                  sequence_itemset_2) {
+         function(sequence_itemset_1, sequence_itemset_2) {
            w_sequence_itemset = list()
+           #period <- attr(sequence_itemset_1, "period")
+
+           if (is.null(attr(sequence_itemset_1, "period"))) {
+             period <- attr(sequence_itemset_2, "period")
+           } else {
+             period <- attr(sequence_itemset_1, "period")
+           }
+
+           #if (attr(sequence_itemset_1, "period") != attr(sequence_itemset_2, "period")) {
+           #  stop(c("PERIODS DO NOT MATCH ", sequence_itemset_1, "sequence_itemset_1 = ", attr(sequence_itemset_1, "period"),
+           #         " while sequence_itemset_2 = ", attr(sequence_itemset_2, "period")))
+           #}
+
+
            elements <- c(sequence_itemset_1, sequence_itemset_2)
            elements <- elements[elements != "_"]
-           freq_tbl <-
-             elements %>%
-             table()
+           freq_tbl <- elements %>% table()
+
            w_sequence_itemset$elements <- names(freq_tbl)
            w_sequence_itemset$element_weights <- unname(freq_tbl)
-           if (("_" %in% sequence_itemset_1) |
-               ("_" %in% sequence_itemset_2)) {
+           w_sequence_itemset$period <- period
+
+           if (("_" %in% sequence_itemset_1) | ("_" %in% sequence_itemset_2)) {
              w_sequence_itemset$itemset_weight <- 1
            } else {
              w_sequence_itemset$itemset_weight <- 2
            }
            class_it(w_sequence_itemset, "W_Sequence_Itemset")
-         })
+         }
+    )
+
   attr(w_sequence, "n") <- 2
+
   class_it(w_sequence, "W_Sequence")
+
 }
 
 #' @export
 get_weighted_sequence.W_Sequence <- function(w_sequence, sequence) {
+
   n <- attr(w_sequence, "n")
   x <- F
+
   w_sequence_new <-
     map2(w_sequence, sequence,
          function(w_sequence_itemset, sequence_itemset) {
+
+           #period <- w_sequence_itemset$period
+           if (is.null(w_sequence_itemset$period)) {
+             #period <- sequence_itemset$period
+             period <- attr(sequence_itemset, "period")
+           } else {
+             period <- w_sequence_itemset$period
+           }
+
+           #if (w_sequence_itemset$period != attr(sequence_itemset, "period")) {
+           #  stop(c("PERIODS DO NOT MATCH:", "w_sequence_itemset = ", w_sequence_itemset$period, " while sequence_itemset = ", attr(sequence_itemset, "period")))
+           #}
+
+
+
+
+
            if ("_" %in% sequence_itemset) {
              x <- T
              class_it(w_sequence_itemset, "W_Sequence_Itemset")
 
            } else if ("_" %in% w_sequence_itemset$elements) {
              x <- T
+
              freq_tb <- table(sequence_itemset)
              w_sequence_itemset$elements <- names(freq_tb)
              w_sequence_itemset$element_weights <- unname(freq_tb)
              w_sequence_itemset$itemset_weight <- 1
+             w_sequence_itemset$period <- period
+
              class_it(w_sequence_itemset, "W_Sequence_Itemset")
+
            } else {
-             freq_tb <-
-               rep(w_sequence_itemset$elements,
-                   w_sequence_itemset$element_weights) %>%
-               c(sequence_itemset) %>%
-               table()
+             freq_tb <- rep(w_sequence_itemset$elements,
+                            w_sequence_itemset$element_weights) %>%
+                        c(sequence_itemset) %>%
+                        table()
 
              w_sequence_itemset$elements <- names(freq_tb)
              w_sequence_itemset$element_weights <- unname(freq_tb)
-             w_sequence_itemset$itemset_weight <-
-               w_sequence_itemset$itemset_weight + 1
+             w_sequence_itemset$itemset_weight <- w_sequence_itemset$itemset_weight + 1
+             w_sequence_itemset$period <- period
+
              class_it(w_sequence_itemset, "W_Sequence_Itemset")
+
            }
          })
 
-
   attr(w_sequence_new, "n") <- n + 1
+
   class_it(w_sequence_new, "W_Sequence")
+
 }
 
 #' @export
 get_weighted_sequence.Sequence_List <- function(sequence_list,
                                                 fun = sorenson_distance) {
+
+  # browser()
+
   if (length(sequence_list) == 1) {
-    # browser()
+
     sequence <- sequence_list[[1]]
-    w_sequence <- align_sequences(sequence,
-                                  sequence,
-                                  fun)
+    w_sequence <- align_sequences(sequence, sequence, fun)
 
     for (i in 1:length(sequence)) {
       w_sequence[[i]]$itemset_weight <- 1
-      w_sequence[[i]]$element_weights <-
-        (w_sequence[[i]]$element_weights) / 2
+      w_sequence[[i]]$element_weights <- (w_sequence[[i]]$element_weights) / 2
+      w_sequence[[i]]$period <- w_sequence[[i]]$period
     }
     attr(w_sequence, "n") <- 1
-    alignments <-
-      attr(w_sequence, "alignments")[1]
+    alignments <- attr(w_sequence, "alignments")[1]
 
   } else {
-    # browser()
-    w_sequence <-
-      align_sequences(sequence_list[[1]], sequence_list[[2]], fun)
+
+    w_sequence <- align_sequences(sequence_list[[1]], sequence_list[[2]], fun)
 
     if (length(sequence_list) > 2) {
       for (i in 3:length(sequence_list)) {
@@ -97,15 +139,18 @@ get_weighted_sequence.Sequence_List <- function(sequence_list,
       }
     }
 
-    # browser()
+
     alignments <- attr(w_sequence, "alignments")
+
   }
 
   alignments <- class_it(alignments, "Sequence_List")
   names(alignments) <- names(sequence_list)
+
   attr(w_sequence, "alignments") <- alignments
 
   w_sequence
+
 }
 
 #' @export
@@ -157,8 +202,7 @@ align_sequences <- function(x, ...) {
 #' @export
 align_sequences.Sequence <-
   function(sequence_1, sequence_2, fun = sorenson_distance) {
-    distance_matrix <-
-      inter_sequence_distance(sequence_1, sequence_2, fun)$distance_matrix
+    distance_matrix <- inter_sequence_distance(sequence_1, sequence_2, fun)$distance_matrix
     aligned_sequence_1 <- structure(list(), class = "Sequence")
     aligned_sequence_2 <- structure(list(), class = "Sequence")
 
@@ -267,6 +311,8 @@ align_sequences.Sequence <-
       list(aligned_sequences$aligned_sequence_1,
            aligned_sequences$aligned_sequence_2)
 
+
+
     w_sequence
 
   }
@@ -287,8 +333,7 @@ insert_blank_w_itemset <- function(w_sequence) {
 align_sequences.W_Sequence <- function(w_sequence,
                                        sequence,
                                        fun = sorenson_distance) {
-  distance_matrix <-
-    inter_sequence_distance(w_sequence, sequence, fun)$distance_matrix
+  distance_matrix <- inter_sequence_distance(w_sequence, sequence, fun)$distance_matrix
   n <- attr(w_sequence, "n")
   pre_alignments <- attr(w_sequence, "alignments")
 

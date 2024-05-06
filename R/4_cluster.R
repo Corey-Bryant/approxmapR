@@ -173,7 +173,7 @@ cluster_knn <- function(df_aggregated, k, use_cache = TRUE) {
 
 
     df_cluster <- df_cluster %>% group_by(cluster_id) %>% arrange(desc(sequence_density)) %>% select(-sequence_density,
-        -density_info, -cluster_density, cluster = cluster_id) %>% nest(df_sequences=c("id","sequence")) %>% mutate(n = map_int(df_sequences,
+        -density_info, -cluster_density, cluster = cluster_id) %>% nest(df_sequences=c("id", "nested_id", "sequence")) %>% mutate(n = map_int(df_sequences,
         nrow), df_sequences = map(df_sequences, function(df_sequence) {
         class(df_sequence$sequence) <- c("Sequence_List", class(df_sequence$sequence))
         names(df_sequence$sequence) <- df_sequence$id
@@ -259,7 +259,7 @@ cluster_kmedoids <- function(df_aggregated, k, use_cache = TRUE) {
   df_cluster <- df_cluster %>%
                   group_by(cluster_id) %>%
                   select(-sequence_formatted, cluster = cluster_id) %>%
-                  nest(df_sequences=c("id","sequence")) %>%
+                  nest(df_sequences=c("id", "nested_id", "sequence")) %>%
                   mutate(n = map_int(df_sequences, nrow),
                          df_sequences = map(df_sequences, function(df_sequence) {
                            class(df_sequence$sequence) <- c("Sequence_List", class(df_sequence$sequence))
