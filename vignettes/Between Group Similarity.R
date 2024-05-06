@@ -11,18 +11,6 @@ library("igraph")
 
 
 
-output_path = "C:\\Users\\Corey\\Documents\\Approxmap\\PROCESS\\Development 2023"
-
-
-
-### Loading Data and Sub-setting Data to Sta3n = 506 ###
-df <- read.csv("C:\\Users\\Corey\\Documents\\Approxmap\\PROCESS\\Data\\Analysis_FY18_level1_CPT_events.csv")
-df <- subset(df, IPflag != 1)
-names(df) <- c("sta3n", "id", "date", "event", "IPflag")
-
-head(df, 30)
-
-
 
 # Subsetting data
 dfb <- subset(df, sta3n == 631) %>% select("id", "date", "event")

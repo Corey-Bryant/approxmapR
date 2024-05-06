@@ -222,7 +222,11 @@ convert_to_events <- function(data, id_column, sequence_column) {
 }
 
 #' @export
-convert_consensus_to_events <- function(df_patterns) {
+convert_consensus_to_events <- function(df_patterns, consensus_pattern_column = "consensus_pattern") {
+
+  list_cluster <- numeric(1)
+  list_period <- numeric(1)
+  list_elements <- character(1)
 
 list_cluster <- numeric(1)
 list_period <- numeric(1)
@@ -232,7 +236,7 @@ list_elements <- character(1)
 ix <- 0
 for (c in df_patterns$cluster) {
 
-    current_concensus <- subset(df_patterns, cluster == c)$consensus_pattern[[1]]
+    current_concensus <- subset(df_patterns, cluster == c)[[consensus_pattern_column]][[1]]
     current_concensus_length <- length(current_concensus)
 
     for (i in 1:current_concensus_length) {
@@ -310,10 +314,34 @@ consensus_sequence_distance <- function(df_aggregated, consensus_sequence_list) 
                                    assignedConsensusCluster = case_when(distanceMatch == 1 & nDup == 1 ~ consensusid,
                                                                         TRUE ~ "NEED SENSITIVITY ANALYSIS")) %>%
                             arrange(desc(nDup), id, consensusid)
+  id_consensus_distance$distance <- as.numeric(id_consensus_distance$distance)
+
+  id_consensus_distance <- id_consensus_distance %>% filter(distance == minDistance)
+
+  # Calculate the current average distance for each group
+  group_averages <- id_consensus_distance %>% filter(assignedConsensusCluster != "NEED SENSITIVITY ANALYSIS") %>%
+                    group_by(consensusid) %>% summarise(average_distance = mean(as.numeric(distance), na.rm = TRUE),
+                                                        nID = n_distinct(id)) %>% ungroup()
+
+  id_consensus_distance <- left_join(id_consensus_distance, group_averages, by = "consensusid")
 
   id_consensus_distance_dups <- id_consensus_distance %>% filter (nDup > 1)
-  id_consensus_distance <- id_consensus_distance %>% filter(distance == minDistance)  %>% distinct(id, .keep_all = TRUE) %>% select("id", "assignedConsensusCluster", "distance")
+  id_consensus_distance_dups <- id_consensus_distance_dups %>% mutate(average_distance_with = (distance + average_distance) / 2,
+                                                                      average_distance_with_delta = average_distance_with - average_distance,
+                                                                      nID_with = nID + 1) %>%
+                                group_by(id) %>% mutate(min_delta = min(abs(average_distance_with_delta)),
+                                                        assignedConsensusCluster_new = case_when(
+                                                          abs(average_distance_with_delta) == min_delta ~ consensusid,
+                                                          TRUE ~ "NEED SENSITIVITY ANALYSIS")) %>%
+                                ungroup() %>% filter(assignedConsensusCluster_new != "NEED SENSITIVITY ANALYSIS") %>%
+                                select("id", "assignedConsensusCluster_new")
 
+  id_consensus_distance <- left_join(id_consensus_distance, id_consensus_distance_dups, by = "id")
+  id_consensus_distance <- id_consensus_distance %>% mutate(assignedConsensusCluster = case_when(
+                                                                                          assignedConsensusCluster == "NEED SENSITIVITY ANALYSIS" ~ assignedConsensusCluster_new,
+                                                                                          TRUE ~ assignedConsensusCluster)
+                                                            ) %>% filter(consensusid == assignedConsensusCluster) %>%
+                                                                  select("id", "assignedConsensusCluster", "distance")
 
   return(id_consensus_distance)
 
